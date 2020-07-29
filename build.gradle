@@ -1,0 +1,115 @@
+buildscript {
+    repositories {
+        jcenter()
+        maven {
+            name = "SpongePowered"
+            url = "http://repo.spongepowered.org/maven"
+        }
+        maven { url = "https://files.minecraftforge.net/maven" }
+    }
+    dependencies {
+        classpath "net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT"
+        classpath "com.github.jengelman.gradle.plugins:shadow:1.2.3"
+        classpath "org.spongepowered:mixingradle:0.6-SNAPSHOT"
+    }
+}
+apply plugin: "net.minecraftforge.gradle.forge"
+apply plugin: "com.github.johnrengelman.shadow"
+apply plugin: "org.spongepowered.mixin"
+
+version = "b0.3"
+group = "team.ccc"
+archivesBaseName = "Future-CrackedByCCC"
+
+sourceCompatibility = targetCompatibility = "1.8"
+
+compileJava {
+    sourceCompatibility = targetCompatibility = "1.8"
+}
+
+minecraft {
+    version = "1.12.2-14.23.5.2847"
+    runDir = "run"
+
+    mappings = "snapshot_20171003"
+	makeObfSourceJar = false
+}
+
+repositories {
+    maven {
+        name = "spongepowered-repo"
+        url = "http://repo.spongepowered.org/maven/"
+    }
+    maven {
+        name = "jitpack.io"
+        url = "https://jitpack.io"
+    }
+    maven {
+        name = "impact-development"
+        url = "https://impactdevelopment.github.io/maven/"
+    }
+    mavenCentral()
+}
+
+dependencies {
+    compile("org.spongepowered:mixin:0.7.11-SNAPSHOT") {
+        exclude module: "guava"
+        exclude module: "gson"
+    }
+    compile "com.github.ImpactDevelopment:SimpleTweaker:1.2"
+
+    // load future_dump from libs folder
+    runtime fileTree(dir: "libs", include: "*.jar")
+}
+
+jar {
+    manifest {
+        attributes(
+            "Manifest-Version": "1.0",
+	        'TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
+	        'TweakOrder': 0,
+	        'FMLCorePluginContainsFMLMod': 'true',
+            "FMLCorePlugin": "team.ccc.futurecrack.FutureCrack",
+	        'ForceLoadAsMod': 'true',
+        )
+    }
+}
+
+//what am i doing
+shadowJar {
+    dependencies {
+        include(dependency("org.spongepowered:mixin"))
+        include(dependency("com.github.ImpactDevelopment:SimpleTweaker"))
+    }
+    exclude "dummyThing"
+    exclude "LICENSE.txt"
+    classifier = "release"
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "mcversion", project.minecraft.version
+
+    from(sourceSets.main.resources.srcDirs) {
+        include "mcmod.info"
+
+        expand "version": project.version, "mcversion": project.minecraft.version
+    }
+
+    from(sourceSets.main.resources.srcDirs) {
+        exclude "mcmod.info"
+    }
+}
+
+mixin {
+	defaultObfuscationEnv searge
+	add sourceSets.main, 'mixins.future.refmap.json'
+}
+
+task putInModsFolder(type: Copy) {
+	from file("$buildDir/libs/Future-CrackedByCCC-b0.3-release.jar")
+	into file (System.getProperty("user.home") + "\\AppData\\Roaming\\.minecraft\\mods\\1.12.2\\")
+}
+
+build.dependsOn(shadowJar)
+build.finalizedBy(putInModsFolder)
